@@ -3,6 +3,8 @@ import java.io.*;
 import java.util.*;
 import java.util.zip.*;
 import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.sound.sampled.*;
 import javax.sound.sampled.spi.*;
 
@@ -99,7 +101,7 @@ public class Sfz2Multisample {
                 String[] parts = sample.split("/");
 
                 xml+="<sample file=\""+parts[ parts.length-1].trim()+"\" gain=\"0.000\" sample-start=\"0.000\" sample-stop=\""+end+"\" tune=\"0.0\">\n";
-                xml+="<key high=\""+attributes.get("hikey")+"\" low=\""+attributes.get("lokey")+"\" root=\""+attributes.get("pitch_keycenter")+"\" track=\"true\"/>\n";
+                xml+="<key high=\""+normalizeNote(attributes.get("hikey"))+"\" low=\""+normalizeNote(attributes.get("lokey"))+"\" root=\""+normalizeNote(attributes.get("pitch_keycenter"))+"\" track=\"true\"/>\n";
                 xml+="<velocity/>\n"; 
                 xml+="<loop/>\n";
                 xml+="</sample>\n";
@@ -147,6 +149,32 @@ public class Sfz2Multisample {
 
 
 
+    }
+
+	/**
+	 * Tries to convert note names to note numbers according to http://drealm.info/sfz/plj-sfz.xhtml
+	 * "The valid range for note numbers is 0 to 127 or the equivalent note names, C-1 to G9."
+	 * ... and adding one octave to match bitwig's note numbers apparently biased to C0 == 0
+	 * @param noteNumberOrName
+	 * @return String representation of a note number
+	 */
+    public static String normalizeNote(final String noteNumberOrName) {
+		final Pattern noteNamePattern = Pattern.compile("(c)?(c#)?(d)?(d#)?(e)?(f)?(f#)?(g)?(g#)?(a)?(a#)?(b)?(-?\\d)");
+		Matcher m = noteNamePattern.matcher(noteNumberOrName.toLowerCase());
+		if(m.matches()) {
+			int number=12;
+			for(int i=1; i<13; i++) {
+				if(m.group(i)!=null) {
+					number += i-1;
+					break;
+				}
+			}
+			number += (Integer.valueOf(m.group(13))+1)*12;
+			System.out.println("Converting note name '"+noteNumberOrName+"' to note number "+number+".");
+			return Integer.toString(number);
+		} else {
+			return noteNumberOrName;
+		}
     }
 
     public String loadSfz( String filename ) {
